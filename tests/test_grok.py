@@ -30,7 +30,7 @@ def model():
 def mock_env(monkeypatch):
     """Mock environment variables and API key for testing"""
     monkeypatch.setenv("XAI_API_KEY", "xai-test-key-mock")
-    monkeypatch.setattr(llm.Model, "get_key", lambda self: "xai-test-key-mock")
+    monkeypatch.setattr("llm_grok.Grok.get_key", lambda self, key=None: "xai-test-key-mock")
 
 
 @pytest.fixture

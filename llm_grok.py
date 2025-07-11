@@ -15,6 +15,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 console = Console()
 
 AVAILABLE_MODELS = [
+    "grok-4-latest",
     "grok-3-latest",
     "grok-3-fast-latest",
     "grok-3-mini-latest",
@@ -22,7 +23,7 @@ AVAILABLE_MODELS = [
     "grok-2-latest",
     "grok-2-vision-latest",
 ]
-DEFAULT_MODEL = "grok-3-latest"
+DEFAULT_MODEL = "grok-4-latest"
 
 
 @llm.hookimpl
