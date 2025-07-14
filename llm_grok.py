@@ -75,6 +75,49 @@ class Grok(llm.KeyModel):
             ge=0,
             default=None,
         )
+        search_mode: Optional[str] = Field(
+            description="Live search mode: 'auto', 'on', or 'off' (default: off)",
+            default=None,
+        )
+        max_search_results: Optional[int] = Field(
+            description="Maximum number of search results to consider (default: 20)",
+            ge=1,
+            default=20,
+        )
+        search_from_date: Optional[str] = Field(
+            description="Start date for search results in ISO8601 format (YYYY-MM-DD)",
+            default=None,
+        )
+        search_to_date: Optional[str] = Field(
+            description="End date for search results in ISO8601 format (YYYY-MM-DD)",
+            default=None,
+        )
+        return_citations: Optional[bool] = Field(
+            description="Whether to return citations for search results (default: True)",
+            default=True,
+        )
+        search_sources: Optional[list] = Field(
+            description="List of search sources to use (default: web and x)",
+            default=None,
+        )
+        excluded_x_handles: Optional[str] = Field(
+            description="Comma-separated list of X handles to exclude from search (max 10)",
+            default=None,
+        )
+        included_x_handles: Optional[str] = Field(
+            description="Comma-separated list of X handles to include in search (cannot be used with excluded_x_handles)",
+            default=None,
+        )
+        post_favorite_count: Optional[int] = Field(
+            description="Minimum number of favorites for X posts to be included",
+            ge=0,
+            default=None,
+        )
+        post_view_count: Optional[int] = Field(
+            description="Minimum number of views for X posts to be included",
+            ge=0,
+            default=None,
+        )
         # TODO: Add reasoning_effort
 
     def __init__(self, model_id):
@@ -206,6 +249,49 @@ class Grok(llm.KeyModel):
         if options.max_completion_tokens is not None:
             # TODO: If max_completion_tokens runs out during reasoning, llm will crash when trying to log to db
             body["max_completion_tokens"] = options.max_completion_tokens
+
+        # Add live search parameters if search is enabled
+        if options.search_mode and options.search_mode != "off":
+            search_params = {
+                "mode": options.search_mode if options.search_mode else "auto",
+                "max_search_results": options.max_search_results,
+                "return_citations": options.return_citations,
+            }
+            
+            # Add date range if specified
+            if options.search_from_date:
+                search_params["from_date"] = options.search_from_date
+            if options.search_to_date:
+                search_params["to_date"] = options.search_to_date
+            
+            # Add sources if specified
+            if options.search_sources:
+                search_params["sources"] = options.search_sources
+            
+            # Add X-specific parameters
+            if options.excluded_x_handles:
+                excluded_handles = options.excluded_x_handles
+                if isinstance(excluded_handles, str):
+                    excluded_handles = [h.strip() for h in excluded_handles.split(",")]
+                if len(excluded_handles) > 10:
+                    raise ValueError("Maximum 10 X handles can be excluded")
+                if options.included_x_handles:
+                    raise ValueError("Cannot specify both excluded_x_handles and included_x_handles")
+                search_params["excluded_x_handles"] = excluded_handles
+            
+            if options.included_x_handles:
+                included_handles = options.included_x_handles
+                if isinstance(included_handles, str):
+                    included_handles = [h.strip() for h in included_handles.split(",")]
+                search_params["included_x_handles"] = included_handles
+            
+            if options.post_favorite_count is not None:
+                search_params["post_favorite_count"] = options.post_favorite_count
+            
+            if options.post_view_count is not None:
+                search_params["post_view_count"] = options.post_view_count
+            
+            body["search_parameters"] = search_params
 
         headers = {
             "Content-Type": "application/json",

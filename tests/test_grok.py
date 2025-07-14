@@ -313,3 +313,412 @@ def test_stream_parsing_error(model, httpx_mock: HTTPXMock):
     response = model.prompt("Test message", stream=True)
     chunks = list(response)
     assert chunks == []
+
+
+def test_live_search_auto_mode(model, mock_response, httpx_mock: HTTPXMock):
+    expected_request = {
+        "model": DEFAULT_MODEL,
+        "messages": [
+            {"role": "user", "content": "What's the latest news?"},
+        ],
+        "stream": False,
+        "temperature": 0.0,
+        "search_parameters": {
+            "mode": "auto",
+            "max_search_results": 20,
+            "return_citations": True,
+        },
+    }
+
+    httpx_mock.add_response(
+        method="POST",
+        url="https://api.x.ai/v1/chat/completions",
+        match_headers={"Authorization": "Bearer xai-test-key-mock"},
+        json=mock_response,
+        headers={"Content-Type": "application/json"},
+        match_json=expected_request,
+    )
+
+    response = model.prompt("What's the latest news?", stream=False, search_mode="auto")
+    result = response.text()
+    assert result == "Test response"
+
+    request = httpx_mock.get_requests()[0]
+    assert json.loads(request.content) == expected_request
+
+
+def test_live_search_on_mode_with_parameters(model, mock_response, httpx_mock: HTTPXMock):
+    expected_request = {
+        "model": DEFAULT_MODEL,
+        "messages": [
+            {"role": "user", "content": "Search for AI news"},
+        ],
+        "stream": False,
+        "temperature": 0.0,
+        "search_parameters": {
+            "mode": "on",
+            "max_search_results": 10,
+            "return_citations": False,
+            "from_date": "2025-01-01",
+            "to_date": "2025-01-15",
+            "excluded_x_handles": ["@spam_account"],
+            "post_favorite_count": 100,
+            "post_view_count": 1000,
+        },
+    }
+
+    httpx_mock.add_response(
+        method="POST",
+        url="https://api.x.ai/v1/chat/completions",
+        match_headers={"Authorization": "Bearer xai-test-key-mock"},
+        json=mock_response,
+        headers={"Content-Type": "application/json"},
+        match_json=expected_request,
+    )
+
+    response = model.prompt(
+        "Search for AI news",
+        stream=False,
+        search_mode="on",
+        max_search_results=10,
+        return_citations=False,
+        search_from_date="2025-01-01",
+        search_to_date="2025-01-15",
+        excluded_x_handles="@spam_account",
+        post_favorite_count=100,
+        post_view_count=1000,
+    )
+    result = response.text()
+    assert result == "Test response"
+
+    request = httpx_mock.get_requests()[0]
+    assert json.loads(request.content) == expected_request
+
+
+def test_live_search_off_mode(model, mock_response, httpx_mock: HTTPXMock):
+    expected_request = {
+        "model": DEFAULT_MODEL,
+        "messages": [
+            {"role": "user", "content": "Regular query without search"},
+        ],
+        "stream": False,
+        "temperature": 0.0,
+    }
+
+    httpx_mock.add_response(
+        method="POST",
+        url="https://api.x.ai/v1/chat/completions",
+        match_headers={"Authorization": "Bearer xai-test-key-mock"},
+        json=mock_response,
+        headers={"Content-Type": "application/json"},
+        match_json=expected_request,
+    )
+
+    response = model.prompt("Regular query without search", stream=False, search_mode="off")
+    result = response.text()
+    assert result == "Test response"
+
+    request = httpx_mock.get_requests()[0]
+    content = json.loads(request.content)
+    assert "search_parameters" not in content
+    assert content == expected_request
+
+
+def test_live_search_with_sources(model, mock_response, httpx_mock: HTTPXMock):
+    search_sources = [
+        {"type": "web"},
+        {"type": "x"},
+        {"type": "news"}
+    ]
+    
+    expected_request = {
+        "model": DEFAULT_MODEL,
+        "messages": [
+            {"role": "user", "content": "Search with custom sources"},
+        ],
+        "stream": False,
+        "temperature": 0.0,
+        "search_parameters": {
+            "mode": "on",
+            "max_search_results": 20,
+            "return_citations": True,
+            "sources": search_sources,
+        },
+    }
+
+    httpx_mock.add_response(
+        method="POST",
+        url="https://api.x.ai/v1/chat/completions",
+        match_headers={"Authorization": "Bearer xai-test-key-mock"},
+        json=mock_response,
+        headers={"Content-Type": "application/json"},
+        match_json=expected_request,
+    )
+
+    response = model.prompt(
+        "Search with custom sources",
+        stream=False,
+        search_mode="on",
+        search_sources=search_sources,
+    )
+    result = response.text()
+    assert result == "Test response"
+
+    request = httpx_mock.get_requests()[0]
+    assert json.loads(request.content) == expected_request
+
+
+def test_live_search_included_x_handles(model, mock_response, httpx_mock: HTTPXMock):
+    expected_request = {
+        "model": DEFAULT_MODEL,
+        "messages": [
+            {"role": "user", "content": "Search specific handles"},
+        ],
+        "stream": False,
+        "temperature": 0.0,
+        "search_parameters": {
+            "mode": "on",
+            "max_search_results": 20,
+            "return_citations": True,
+            "included_x_handles": ["@elonmusk", "@openai"],
+        },
+    }
+
+    httpx_mock.add_response(
+        method="POST",
+        url="https://api.x.ai/v1/chat/completions",
+        match_headers={"Authorization": "Bearer xai-test-key-mock"},
+        json=mock_response,
+        headers={"Content-Type": "application/json"},
+        match_json=expected_request,
+    )
+
+    response = model.prompt(
+        "Search specific handles",
+        stream=False,
+        search_mode="on",
+        included_x_handles="@elonmusk,@openai",
+    )
+    result = response.text()
+    assert result == "Test response"
+
+    request = httpx_mock.get_requests()[0]
+    assert json.loads(request.content) == expected_request
+
+
+def test_live_search_streaming(model, httpx_mock: HTTPXMock):
+    expected_request = {
+        "model": DEFAULT_MODEL,
+        "messages": [
+            {"role": "user", "content": "Streaming search query"},
+        ],
+        "stream": True,
+        "temperature": 0.0,
+        "search_parameters": {
+            "mode": "auto",
+            "max_search_results": 20,
+            "return_citations": True,
+        },
+    }
+
+    def response_callback(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == "Bearer xai-test-key-mock"
+        assert json.loads(request.content) == expected_request
+        stream_content = [
+            'data: {"id":"chatcmpl-123","choices":[{"delta":{"role":"assistant"}}]}\n\n',
+            'data: {"id":"chatcmpl-123","choices":[{"delta":{"content":"Search"}}]}\n\n',
+            'data: {"id":"chatcmpl-123","choices":[{"delta":{"content":" result"}}]}\n\n',
+            "data: [DONE]\n\n",
+        ]
+        return httpx.Response(
+            status_code=200,
+            headers={"content-type": "text/event-stream"},
+            content="".join(stream_content).encode(),
+        )
+
+    httpx_mock.add_callback(
+        response_callback,
+        method="POST",
+        url="https://api.x.ai/v1/chat/completions",
+        match_headers={"Authorization": "Bearer xai-test-key-mock"},
+        match_json=expected_request,
+    )
+
+    response = model.prompt("Streaming search query", stream=True, search_mode="auto")
+    chunks = list(response)
+    assert "".join(chunks) == "Search result"
+
+
+def test_live_search_provides_current_data(model, httpx_mock: HTTPXMock):
+    """Test that live search actually provides current data, not training data"""
+    current_response = {
+        "id": "chatcmpl-123",
+        "object": "chat.completion",
+        "created": 1721000000,  # July 2025 timestamp
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant", 
+                    "content": "Today is July 14, 2025. Recent headlines from today include breaking news about current events that occurred after my training cutoff."
+                },
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {
+            "num_sources_used": 5
+        }
+    }
+    
+    expected_request = {
+        "model": DEFAULT_MODEL,
+        "messages": [
+            {"role": "user", "content": "What is today's date and latest news?"},
+        ],
+        "stream": False,
+        "temperature": 0.0,
+        "search_parameters": {
+            "mode": "on",
+            "max_search_results": 20,
+            "return_citations": True,
+        },
+    }
+
+    httpx_mock.add_response(
+        method="POST",
+        url="https://api.x.ai/v1/chat/completions",
+        match_headers={"Authorization": "Bearer xai-test-key-mock"},
+        json=current_response,
+        headers={"Content-Type": "application/json"},
+        match_json=expected_request,
+    )
+
+    response = model.prompt("What is today's date and latest news?", stream=False, search_mode="on")
+    result = response.text()
+    
+    # Verify response contains current date (2025) and not training data cutoff (2023)
+    assert "2025" in result
+    assert "2023" not in result
+    assert "today" in result.lower() or "current" in result.lower()
+    
+    # Verify the response JSON includes usage data indicating sources were used
+    assert response.response_json["usage"]["num_sources_used"] > 0
+
+
+def test_live_search_vs_no_search_behavior(model, httpx_mock: HTTPXMock):
+    """Test that search_mode=off doesn't provide current data while search_mode=on does"""
+    
+    # Mock response for search_mode=off (no live data)
+    no_search_response = {
+        "id": "chatcmpl-124",
+        "object": "chat.completion", 
+        "created": 1721000000,
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": "I don't have access to real-time information. My knowledge cutoff is April 2024."
+                },
+                "finish_reason": "stop",
+            }
+        ],
+    }
+    
+    # Mock response for search_mode=on (with live data)
+    with_search_response = {
+        "id": "chatcmpl-125", 
+        "object": "chat.completion",
+        "created": 1721000000,
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": "Based on current search results from July 14, 2025, here are today's headlines..."
+                },
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {
+            "num_sources_used": 8
+        }
+    }
+
+    # Test without search
+    httpx_mock.add_response(
+        method="POST",
+        url="https://api.x.ai/v1/chat/completions",
+        match_headers={"Authorization": "Bearer xai-test-key-mock"},
+        json=no_search_response,
+        headers={"Content-Type": "application/json"},
+        match_json={
+            "model": DEFAULT_MODEL,
+            "messages": [{"role": "user", "content": "What are today's headlines?"}],
+            "stream": False,
+            "temperature": 0.0,
+        },
+    )
+
+    response_no_search = model.prompt("What are today's headlines?", stream=False, search_mode="off")
+    result_no_search = response_no_search.text()
+    
+    # Should not have current data
+    assert "cutoff" in result_no_search.lower() or "don't have access" in result_no_search.lower()
+    
+    # Test with search
+    httpx_mock.add_response(
+        method="POST", 
+        url="https://api.x.ai/v1/chat/completions",
+        match_headers={"Authorization": "Bearer xai-test-key-mock"},
+        json=with_search_response,
+        headers={"Content-Type": "application/json"},
+        match_json={
+            "model": DEFAULT_MODEL,
+            "messages": [{"role": "user", "content": "What are today's headlines?"}],
+            "stream": False,
+            "temperature": 0.0,
+            "search_parameters": {
+                "mode": "on",
+                "max_search_results": 20,
+                "return_citations": True,
+            },
+        },
+    )
+
+    response_with_search = model.prompt("What are today's headlines?", stream=False, search_mode="on")
+    result_with_search = response_with_search.text()
+    
+    # Should have current data
+    assert "2025" in result_with_search
+    assert "search results" in result_with_search.lower() or "current" in result_with_search.lower()
+    assert response_with_search.response_json["usage"]["num_sources_used"] > 0
+
+
+def test_live_search_validation_errors(model, mock_response, httpx_mock: HTTPXMock):
+    # Test excluded handles limit
+    with pytest.raises(ValueError, match="Maximum 10 X handles can be excluded"):
+        try:
+            response = model.prompt(
+                "Test",
+                stream=False,
+                search_mode="on",
+                excluded_x_handles=",".join(["@handle" + str(i) for i in range(11)])
+            )
+            response.text()  # Force execution
+        except ValueError:
+            raise
+    
+    # Test conflicting handle parameters
+    with pytest.raises(ValueError, match="Cannot specify both excluded_x_handles and included_x_handles"):
+        try:
+            response = model.prompt(
+                "Test",
+                stream=False,
+                search_mode="on",
+                excluded_x_handles="@excluded",
+                included_x_handles="@included"
+            )
+            response.text()  # Force execution
+        except ValueError:
+            raise
