@@ -84,15 +84,53 @@ llm grok models
 
 ## Model Options
 
-The grok-4-latest model accepts the following options, using `-o name value` syntax:
+The grok models accept the following options, using `-o name value` syntax:
 
+### Basic Options
 * `-o temperature 0.7`: The sampling temperature, between 0 and 1. Higher values like 0.8 increase randomness, while lower values like 0.2 make the output more focused and deterministic.
 * `-o max_completion_tokens 100`: Maximum number of tokens to generate in the completion (includes both visible tokens and reasoning tokens).
 
-Example with options:
+### Live Search Options
 
+All Grok models support live search functionality to access real-time information:
+
+* `-o search_mode auto`: Live search mode. Options: `auto`, `on`, `off` (default: disabled)
+* `-o max_search_results 20`: Maximum number of search results to consider (default: 20)
+* `-o return_citations true`: Whether to return citations for search results (default: true)
+* `-o search_from_date 2025-01-01`: Start date for search results in ISO8601 format (YYYY-MM-DD)
+* `-o search_to_date 2025-01-15`: End date for search results in ISO8601 format (YYYY-MM-DD)
+
+### X Platform Search Options
+* `-o excluded_x_handles "@spam_account,@another"`: Comma-separated list of X handles to exclude (max 10)
+* `-o included_x_handles "@elonmusk,@openai"`: Comma-separated list of X handles to include (cannot be used with excluded_x_handles)
+* `-o post_favorite_count 100`: Minimum number of favorites for X posts to be included
+* `-o post_view_count 1000`: Minimum number of views for X posts to be included
+
+### Examples
+
+Basic usage with options:
 ```bash
 llm -m grok-4-latest -o temperature 0.2 -o max_completion_tokens 50 'Write a haiku about AI'
+```
+
+Using live search to get current information:
+```bash
+llm -m grok-4-latest -o search_mode on 'What are the latest developments in AI today?'
+```
+
+Searching with date constraints:
+```bash
+llm -m grok-4-latest -o search_mode on -o search_from_date 2025-01-01 -o search_to_date 2025-01-15 'What happened in AI this month?'
+```
+
+Filtering X posts by engagement:
+```bash
+llm -m grok-4-latest -o search_mode on -o post_favorite_count 1000 -o post_view_count 10000 'Show me popular AI discussions on X'
+```
+
+Excluding specific X accounts:
+```bash
+llm -m grok-4-latest -o search_mode on -o excluded_x_handles "@spam_account" 'Latest AI news from X'
 ```
 
 ## Development
