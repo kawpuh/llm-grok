@@ -268,6 +268,10 @@ class Grok(llm.KeyModel):
             if options.search_sources:
                 search_params["sources"] = options.search_sources
             
+            # Validate conflicting handle parameters first
+            if options.excluded_x_handles and options.included_x_handles:
+                raise ValueError("Cannot specify both excluded_x_handles and included_x_handles")
+
             # Add X-specific parameters
             if options.excluded_x_handles:
                 excluded_handles = options.excluded_x_handles
@@ -275,11 +279,8 @@ class Grok(llm.KeyModel):
                     excluded_handles = [h.strip() for h in excluded_handles.split(",")]
                 if len(excluded_handles) > 10:
                     raise ValueError("Maximum 10 X handles can be excluded")
-                if options.included_x_handles:
-                    raise ValueError("Cannot specify both excluded_x_handles and included_x_handles")
                 search_params["excluded_x_handles"] = excluded_handles
-            
-            if options.included_x_handles:
+            elif options.included_x_handles:
                 included_handles = options.included_x_handles
                 if isinstance(included_handles, str):
                     included_handles = [h.strip() for h in included_handles.split(",")]
